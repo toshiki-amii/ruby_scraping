@@ -5,10 +5,7 @@ def get_from(url)
 end
 
 def write_file(path, text)
-  File.open('path', 'w') { |file| file.write(text) }
+  File.open('techable.html', 'w') { |file| file.write(text) }
 end
 
-html =  get_from('https://techable.jp/')
-
-
-write_file('techable.html', html )
+write_file('techable.html', get_from('https://techable.jp/'))
