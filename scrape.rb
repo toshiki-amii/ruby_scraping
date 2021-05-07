@@ -8,4 +8,4 @@ def write_file(path, text)
   File.open('techable.html', 'w') { |file| file.write(text) }
 end
 
-write_file('techable.html', get_from('https://techable.jp/'))
+write_file('path', get_from('https://techable.jp/'))
