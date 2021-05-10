@@ -3,6 +3,8 @@ require 'nokogiri'
 require 'json'
 require 'optparse'
 
+# 1.オプション解析
+
 opt = OptionParser.new
 opt.on('--infile=VAL')
 opt.on('--outfile=VAL')
@@ -16,13 +18,21 @@ if params[:infile] && params[:category]
   exit(1)
 end
 
+# 1.オプション解析ここまで
+
+# 2.HTML読み込み
+
 def get_from(url)
   Net::HTTP.get(URI(url))
 end
 
+# 4.ファイル書き出し
+
 def write_file(path, text)
   File.open(path, 'w') { |file| file.write(text) }
 end
+
+# 3.スクレイピング
 
 def scrape_news(news)
   {
@@ -31,12 +41,16 @@ def scrape_news(news)
   }
 end
 
+# 3.スクレイピング
+
 def scrape_section(section)
   {
     category: section.xpath('./h6').text,
     news:  section.xpath('./div/div').map { |node| scrape_news(node) }
   }
 end
+
+# 2.HTML読み込み
 
 if params[:infile]
   html = File.read(params[:infile])
@@ -48,9 +62,13 @@ else
   html = get_from(url)
 end
 
+# 3.スクレイピング
+
 doc = Nokogiri::HTML.parse(html, nil, 'utf-8')
 
 pitnews = doc.xpath('/html/body/main/section[position() > 1]').map { |section| scrape_section(section) }
+
+# 4.ファイル書き出し
 
 if params[:outfile]
   outfile = params[:outfile]
