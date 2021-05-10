@@ -77,7 +77,7 @@ end
 class JsonWriter
 
   def initialize(options)
-    @outfile = options(:outfile)
+    @outfile = options[:outfile]
   end
 
   def write_file(path, text)
@@ -90,9 +90,18 @@ class JsonWriter
   end
 end
 
+# 5.Command
 
-params = PreProcesser.exec(ARGV)
-html = HtmlReader.read(params)
-pitnews = Scraper.scrape(html)
-JsonWriter.write(params, pitnews)
+class Command
+  def self.main(argv)
+    options = PreProcesser.exec(argv)
+    reader = HtmlReader.new(options)
+    writer = JsonWriter.new(options)
+
+    pitnews = Scraper.scrape(reader.read)
+    writer.write(pitnews)
+  end
+end
+
+Command.main(ARGV)
 
