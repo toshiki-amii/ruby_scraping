@@ -5,76 +5,99 @@ require 'optparse'
 
 # 1.オプション解析
 
-opt = OptionParser.new
-opt.on('--infile=VAL')
-opt.on('--outfile=VAL')
-opt.on('--category=VAL')
+class PreProcesser
+  def self.exec(argv)
+    opt = OptionParser.new
+    opt.on('--infile=VAL')
+    opt.on('--outfile=VAL')
+    opt.on('--category=VAL')
 
-params = {}
-opt.parse!(ARGV, into: params)
+    params = {}
+    opt.parse!(ARGV, into: params)
 
-if params[:infile] && params[:category]
-  puts "Error: --infile と --category は同時に指定できません。"
-  exit(1)
+    if params[:infile] && params[:category]
+      puts "Error: --infile と --category は同時に指定できません。"
+      exit(1)
+    end
+    params
+  end
 end
+
 
 # 1.オプション解析ここまで
 
 # 2.HTML読み込み
 
-def get_from(url)
-  Net::HTTP.get(URI(url))
+class HtmlReader
+
+  def self.get_from(url)
+    Net::HTTP.get(URI(url))
+  end
+
+  def self.read(params)
+    if params[:infile]
+      html = File.read(params[:infile])
+    else
+      url = 'https://masayuki14.github.io/pit-news/'
+      if params[:category]
+        url = url + '?category=' + params[:category]
+      end 
+      html = get_from(url)
+    end
+    html
+  end
 end
+
+
+# 3.スクレイピング
+
+class Scraper
+
+  def self.scrape_news(news)
+    {
+      title: news.xpath('./p/strong/a').first.text,
+      url: news.xpath('./p/strong/a').first['href']
+    }
+  end
+  
+  def self.scrape_section(section)
+    {
+      category: section.xpath('./h6').text,
+      news:  section.xpath('./div/div').map { |node| scrape_news(node) }
+    }
+  end
+
+  def self.scrape(html)
+    doc = Nokogiri::HTML.parse(html, nil, 'utf-8')
+    pitnews = doc.xpath('/html/body/main/section[position() > 1]').map { |section| scrape_section(section) }
+    pitnews
+  end
+end
+
+
+
 
 # 4.ファイル書き出し
 
-def write_file(path, text)
-  File.open(path, 'w') { |file| file.write(text) }
+class JsonWriter
+
+  def self.write_file(path, text)
+    File.open(path, 'w') { |file| file.write(text) }
+  end
+  
+  def self.write(params, pitnews)
+    if params[:outfile]
+      outfile = params[:outfile]
+    else
+      outfile = 'pitnews.json'
+    end
+    write_file(outfile, {pitnews: pitnews}.to_json)    
+  end
 end
 
-# 3.スクレイピング
 
-def scrape_news(news)
-  {
-    title: news.xpath('./p/strong/a').first.text,
-    url: news.xpath('./p/strong/a').first['href']
-  }
-end
-
-# 3.スクレイピング
-
-def scrape_section(section)
-  {
-    category: section.xpath('./h6').text,
-    news:  section.xpath('./div/div').map { |node| scrape_news(node) }
-  }
-end
-
-# 2.HTML読み込み
-
-if params[:infile]
-  html = File.read(params[:infile])
-else
-  url = 'https://masayuki14.github.io/pit-news/'
-  if params[:category]
-    url = url + '?category=' + params[:category]
-  end 
-  html = get_from(url)
-end
-
-# 3.スクレイピング
-
-doc = Nokogiri::HTML.parse(html, nil, 'utf-8')
-
-pitnews = doc.xpath('/html/body/main/section[position() > 1]').map { |section| scrape_section(section) }
-
-# 4.ファイル書き出し
-
-if params[:outfile]
-  outfile = params[:outfile]
-else
-  outfile = 'pitnews.json'
-end
-
-write_file(outfile, {pitnews: pitnews}.to_json)
+params = PreProcesser.exec(ARGV)
+html = HtmlReader.read(params)
+pitnews = Scraper.scrape(html)
+JsonWriter.write(params, pitnews)
 
